@@ -19,7 +19,7 @@ pipeline {
         stage("Build Docker Image") {
             steps {
                 sh """
-                  docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
+                  sudo docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
                 """
             }
         }
@@ -32,8 +32,8 @@ pipeline {
                     passwordVariable: "DOCKER_PASS"
                 )]) {
                     sh """
-                      echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
-                      docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+                      echo ${DOCKER_PASS} | sudo docker login -u ${DOCKER_USER} --password-stdin
+                      sudo docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
                     """
                 }
             }
