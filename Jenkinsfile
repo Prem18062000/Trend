@@ -4,8 +4,11 @@ pipeline {
     environment {
         DOCKERHUB_USERNAME = "prem18062000"
         IMAGE_NAME = "trend-app"
+
         AWS_REGION = "ap-south-1"
         EKS_CLUSTER_NAME = "trend-eks"
+
+        TF_DIR = "tf"
     }
 
     stages {
@@ -13,6 +16,44 @@ pipeline {
         stage("Checkout Source") {
             steps {
                 checkout scm
+            }
+        }
+
+        stage("Terraform Init") {
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                      terraform init -input=false
+                    """
+                }
+            }
+        }
+
+        stage("Terraform Plan") {
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                      terraform plan -out=tfplan
+                    """
+                }
+            }
+        }
+
+        stage("Terraform Apply (Manual Approval)") {
+            when {
+                beforeInput true
+                expression { return env.BRANCH_NAME == 'main' }
+            }
+            input {
+                message "Apply Terraform changes?"
+                ok "Apply"
+            }
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                      terraform apply -auto-approve tfplan
+                    """
+                }
             }
         }
 
@@ -42,9 +83,11 @@ pipeline {
         stage("Deploy to EKS") {
             steps {
                 sh """
-                  aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
-                  kubectl apply -f k8s/deployment.yaml
-                  kubectl apply -f k8s/service.yaml
+                  aws eks update-kubeconfig \
+                    --region ${AWS_REGION} \
+                    --name ${EKS_CLUSTER_NAME}
+
+                  kubectl apply -f k8s/
                 """
             }
         }
